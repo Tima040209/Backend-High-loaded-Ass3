@@ -68,10 +68,21 @@ TEMPLATES = [
         },
     },
 ]
+CELERY_BROKER_URL = 'amqp://localhost' 
+CELERY_RESULT_BACKEND = 'rpc://'
 
 WSGI_APPLICATION = 'distributed_kv_store.wsgi.application'
 
-
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+        }
+    }
+}
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 

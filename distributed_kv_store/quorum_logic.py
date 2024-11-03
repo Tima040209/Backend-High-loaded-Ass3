@@ -11,7 +11,7 @@ def write_with_quorum(key, value):
                 success_count += 1
         except requests.exceptions.RequestException:
             continue
-    return success_count >= 2  # Кворум: успех при двух или более инстансах
+    return success_count >= 2
 
 def read_with_quorum(key):
     responses = []

@@ -70,6 +70,9 @@ services:
     networks:
       - backend_network
 
+  redis:
+    image: redis:alpine
+
   nginx:
     image: nginx:latest
     container_name: nginx

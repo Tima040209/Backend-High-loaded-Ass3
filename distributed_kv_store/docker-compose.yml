@@ -1,0 +1,122 @@
+version: '3.8'
+
+networks:
+  backend_network:
+    driver: bridge
+
+services:
+  primary_db:
+    image: postgres:13
+    container_name: primary_db
+    environment:
+      POSTGRES_USER: db_user
+      POSTGRES_PASSWORD: db_password
+      POSTGRES_DB: main_db
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+    networks:
+      - backend_network
+    ports:
+      - "5432:5432"
+
+  replica_db:
+    image: postgres:13
+    container_name: replica_db
+    environment:
+      POSTGRES_USER: db_user
+      POSTGRES_PASSWORD: db_password
+      POSTGRES_DB: main_db
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+      PRIMARY_HOST: primary_db
+    depends_on:
+      - primary_db
+    networks:
+      - backend_network
+    ports:
+      - "5433:5432"
+
+  django1:
+    build:
+      context: .
+    container_name: django1
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_HOST=primary_db
+      - REPLICA_HOST=replica_db
+    networks:
+      - backend_network
+
+  django2:
+    build:
+      context: .
+    container_name: django2
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_HOST=primary_db
+      - REPLICA_HOST=replica_db
+    networks:
+      - backend_network
+
+  django3:
+    build:
+      context: .
+    container_name: django3
+    ports:
+      - "8002:8000"
+    environment:
+      - DATABASE_HOST=primary_db
+      - REPLICA_HOST=replica_db
+    networks:
+      - backend_network
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - django1
+      - django2
+      - django3
+    networks:
+      - backend_network
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.0
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "9200:9200"
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.10.0
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    ports:
+      - "5044:5044"
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.10.0
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
